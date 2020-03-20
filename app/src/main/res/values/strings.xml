@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">Instant Visio</string>
+
+
+    <string name="title">Instant Visio</string>
+    <string name="explanation_text">Saisissez le numéro de téléphone mobile \nou l\'email de la personne que vous souhaitez rejoindre en visiophonie\n(vous pouvez saisir les deux).\n\nUn message sera envoyé pour que votre proche puisse vous rejoindre directement en visiophonie et échanger avec vous.</string>
+    <string name="name_title">Votre nom</string>
+    <string name="name_hint"></string>
+
+    <string name="phone_title">Numéro de téléphone de votre proche</string>
+    <string name="phone_hint">(mobile uniquement)</string>
+    <string name="email_title">Email de votre proche</string>
+    <string name="email_hint">(optionnel si vous avez saisi un numéro)</string>
+    <string name="launch">Joindre mon proche</string>
+    <string name="message_beginning">Bonjour</string>
+    <string name="has_name">, C\'est  </string>
+    <string name="message_end">, je voudrais que tu me rejoignes en visio en cliquant sur ce lien\n</string>
+    <string name="toast_missing_data">Il faut au moins saisir une méthode de contact (numéro de téléphone mobile, email).</string>
+</resources>
