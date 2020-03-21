@@ -62,9 +62,18 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.main_activity);
         SharedPreferencesManager.initializePreferences(MainActivity.this);
+        if(!SharedPreferencesManager.getDisclaimerDone()){
 
+            Intent newActivity = new Intent(MainActivity.this, Disclaimer.class);
+            newActivity.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            newActivity.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+            newActivity.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            startActivity(newActivity);
+
+        }
+
+        setContentView(R.layout.main_activity);
         isSimSupport();
 
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {

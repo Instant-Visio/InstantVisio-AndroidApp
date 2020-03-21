@@ -12,6 +12,7 @@ public class SharedPreferencesManager {
 
     private static String VISIOURL = "VISIOURL";
     private static String MAILSERVICEURL = "MAILSERVICEURL";
+    private static String DISCLAIMER_DONE = "DISCLAIMER_DONE";
 
     @SuppressLint("LongLogTag")
     public static void initializePreferences(Context context) {
@@ -39,4 +40,12 @@ public class SharedPreferencesManager {
         sharedPreferencesEditor.apply();
     }
 
+    synchronized public static boolean getDisclaimerDone() {
+        return sharedPreferences.getBoolean(DISCLAIMER_DONE, false);
+    }
+
+    synchronized public static void setDisclaimerDone(Boolean disclaimerDone) {
+        sharedPreferencesEditor.putBoolean(DISCLAIMER_DONE, disclaimerDone);
+        sharedPreferencesEditor.apply();
+    }
 }
