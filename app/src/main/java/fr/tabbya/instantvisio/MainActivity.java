@@ -18,13 +18,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import com.google.firebase.functions.FirebaseFunctions;
 import org.json.JSONObject;
 import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.UUID;
 
 /**
  * Copyright (c) 2019 - Stéphane Luçon 20/03/2020
@@ -43,13 +43,17 @@ public class MainActivity extends Activity {
     private static boolean simDevice;
     private Button button;
     private TextView phoneTitle;
-    private EditText name;
-    private EditText phone;
-    private EditText email;
+    private EditText nameField;
+    private EditText phoneField;
+    private EditText emailField;
+    private FirebaseFunctions mFunctions;
+    private FirebaseService mFirebaseService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mFunctions = FirebaseFunctions.getInstance();
+        mFirebaseService = new FirebaseService(mFunctions);
 
         SharedPreferencesManager.initializePreferences(MainActivity.this);
         if (!SharedPreferencesManager.getDisclaimerDone()) {
@@ -68,15 +72,15 @@ public class MainActivity extends Activity {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.SEND_SMS}, MY_PERMISSIONS_REQUEST_SEND_SMS);
         }
 
-        name = findViewById(R.id.name_edit);
-        phone = findViewById(R.id.phone_edit);
-        email = findViewById(R.id.email_edit);
+        nameField = findViewById(R.id.name_edit);
+        phoneField = findViewById(R.id.phone_edit);
+        emailField = findViewById(R.id.email_edit);
         phoneTitle = findViewById(R.id.phone_title);
 
         if (!simDevice) {
             /** we hide SMS sending option on non SIM device */
             phoneTitle.setVisibility(View.INVISIBLE);
-            phone.setVisibility(View.INVISIBLE);
+            phoneField.setVisibility(View.INVISIBLE);
         }
 
         button = findViewById(R.id.button);
@@ -89,30 +93,33 @@ public class MainActivity extends Activity {
     }
 
     public void launchVisio() {
-        String url = getVisionUrl();
-        String message = getMessageToSend(url);
-        Log.d(TAG, "message to send : " + message);
-
         if (!hasSms() && !hasEmail()) {
             Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
         } else {
-            inviteUserToVision(message);
-            openVisionOnBrowser(url);
+            String phone = getFieldValue(phoneField);
+            String email = getFieldValue(emailField);
+            String name = getFieldValue(nameField);
+
+            mFirebaseService.getVisioUrl(name, phone, email)
+                .subscribe((visionUrl, throwable) -> {
+                    String message = getMessageToSend(visionUrl);
+                    Log.d(TAG, "message to send : " + message);
+                    inviteUserToVision(message);
+                    Log.d("VISION_URL", visionUrl);
+                    openVisionOnBrowser(visionUrl);
+                });
         }
     }
 
-    public String getVisionUrl() {
-        long now = System.currentTimeMillis();
-        String uniqueID = UUID.randomUUID().toString();
-        String url = SharedPreferencesManager.getVisioUrl() /*+"/"*/ + now + uniqueID;
-        return url;
+    public String getFieldValue(EditText textField) {
+        return textField.getText().toString();
     }
 
     public String getMessageToSend(String url) {
         String message = getString(R.string.message_beginning);
         String person = "";
-        if (!String.valueOf(name.getText()).equals(""))
-            person = getString(R.string.has_name) + " " + name.getText();
+        if (!String.valueOf(nameField.getText()).equals(""))
+            person = getString(R.string.has_name) + " " + nameField.getText();
 
         message = message + person + getString(R.string.message_end) + url;
         return message;
@@ -129,11 +136,11 @@ public class MainActivity extends Activity {
     }
 
     public boolean hasSms() {
-        return !String.valueOf(phone.getText()).equals("");
+        return !String.valueOf(phoneField.getText()).equals("");
     }
 
     public boolean hasEmail() {
-        return !String.valueOf(email.getText()).equals("");
+        return !String.valueOf(emailField.getText()).equals("");
     }
 
     public void sendSms(String message) {
@@ -156,7 +163,7 @@ public class MainActivity extends Activity {
         }
         Log.d(TAG, "ready to sendMultipartMessage " + parts);
 
-        smsManager.sendMultipartTextMessage(String.valueOf(phone.getText()), null, parts, sentIntents, deliveryIntents);
+        smsManager.sendMultipartTextMessage(String.valueOf(phoneField.getText()), null, parts, sentIntents, deliveryIntents);
     }
 
     public void isSimSupport() {
@@ -205,7 +212,7 @@ public class MainActivity extends Activity {
 
         try {
             payload.put("name", "Demande URGENTE de visiophonie de votre proche");
-            payload.put("mail", String.valueOf(email.getText()));
+            payload.put("mail", String.valueOf(emailField.getText()));
             payload.put("html", message);
 
             //TODO: check if this N/A breaks everything
