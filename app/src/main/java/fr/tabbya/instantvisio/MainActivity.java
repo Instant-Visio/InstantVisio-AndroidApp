@@ -89,57 +89,74 @@ public class MainActivity extends Activity {
     }
 
     public void launchVisio() {
+        String url = getVisionUrl();
+        String message = getMessageToSend(url);
+        Log.d(TAG, "message to send : " + message);
+
+        if (!hasSms() && !hasEmail()) {
+            Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
+        } else {
+            inviteUserToVision(message);
+            openVisionOnBrowser(url);
+        }
+    }
+
+    public String getVisionUrl() {
         long now = System.currentTimeMillis();
         String uniqueID = UUID.randomUUID().toString();
         String url = SharedPreferencesManager.getVisioUrl() /*+"/"*/ + now + uniqueID;
+        return url;
+    }
 
+    public String getMessageToSend(String url) {
         String message = getString(R.string.message_beginning);
         String person = "";
         if (!String.valueOf(name.getText()).equals(""))
             person = getString(R.string.has_name) + " " + name.getText();
 
         message = message + person + getString(R.string.message_end) + url;
+        return message;
+    }
 
-        Log.d(TAG, "message to send : " + message);
+    public void openVisionOnBrowser(String url) {
+        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        startActivity(browserIntent);
+    }
 
-        /** check that we have something to send */
-        if (String.valueOf(phone.getText()).equals("") && String.valueOf(email.getText()).equals("")) {
-            Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
-        } else {
-            /** send SMS */
-            if (!String.valueOf(phone.getText()).equals("")) {
+    public void inviteUserToVision(String message) {
+        if (hasSms()) sendSms(message);
+        if (hasEmail()) sendMail(MainActivity.this, message);
+    }
 
-                SmsManager smsManager = SmsManager.getDefault();
+    public boolean hasSms() {
+        return !String.valueOf(phone.getText()).equals("");
+    }
 
-                ArrayList<String> parts = smsManager.divideMessage(message);
-                int messageCount = parts.size();
+    public boolean hasEmail() {
+        return !String.valueOf(email.getText()).equals("");
+    }
 
-                Log.d("Message Count", "Message Count: " + messageCount);
+    public void sendSms(String message) {
+        SmsManager smsManager = SmsManager.getDefault();
 
-                ArrayList<PendingIntent> deliveryIntents = new ArrayList<>();
-                ArrayList<PendingIntent> sentIntents = new ArrayList<>();
+        ArrayList<String> parts = smsManager.divideMessage(message);
+        int messageCount = parts.size();
 
-                for (int i = 0; i < parts.size(); i++) {
-                    PendingIntent sentPI = PendingIntent.getBroadcast(getApplicationContext(), i, new Intent("SMS_SENT"), i);
-                    PendingIntent deliveredPI = PendingIntent.getBroadcast(getApplicationContext(), i, new Intent("SMS_DELIVERED"), i);
+        Log.d("Message Count", "Message Count: " + messageCount);
 
-                    sentIntents.add(sentPI);
-                    deliveryIntents.add(deliveredPI);
-                }
-                Log.d(TAG, "ready to sendMultipartMessage " + parts);
+        ArrayList<PendingIntent> deliveryIntents = new ArrayList<>();
+        ArrayList<PendingIntent> sentIntents = new ArrayList<>();
 
-                smsManager.sendMultipartTextMessage(String.valueOf(phone.getText()), null, parts, sentIntents, deliveryIntents);
-            }
+        for (int i = 0; i < parts.size(); i++) {
+            PendingIntent sentPI = PendingIntent.getBroadcast(getApplicationContext(), i, new Intent("SMS_SENT"), i);
+            PendingIntent deliveredPI = PendingIntent.getBroadcast(getApplicationContext(), i, new Intent("SMS_DELIVERED"), i);
 
-            /** send email */
-            if (!String.valueOf(email.getText()).equals("")) {
-                sendMail(MainActivity.this, message);
-            }
-
-            /** then open URL*/
-            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            startActivity(browserIntent);
+            sentIntents.add(sentPI);
+            deliveryIntents.add(deliveredPI);
         }
+        Log.d(TAG, "ready to sendMultipartMessage " + parts);
+
+        smsManager.sendMultipartTextMessage(String.valueOf(phone.getText()), null, parts, sentIntents, deliveryIntents);
     }
 
     public void isSimSupport() {
