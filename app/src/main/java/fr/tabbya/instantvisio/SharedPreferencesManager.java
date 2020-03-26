@@ -15,7 +15,7 @@ public class SharedPreferencesManager {
     @SuppressLint("LongLogTag")
     public static void initializePreferences(Context context) {
         //      Log.d(TAG,"INITIALIZE PREFERENCES");
-        sharedPreferences = context.getSharedPreferences("prefs", Context.MODE_PRIVATE);
+        sharedPreferences = context.getSharedPreferences("fr.tabbya.instantvisio.prefs", Context.MODE_PRIVATE);
         sharedPreferencesEditor = sharedPreferences.edit();
     }
 
