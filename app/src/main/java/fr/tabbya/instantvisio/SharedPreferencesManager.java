@@ -6,10 +6,8 @@ import android.content.SharedPreferences;
 
 public class SharedPreferencesManager {
     private static final String TAG = "SharedPrefMan";
-
     private static SharedPreferences sharedPreferences;
     private static SharedPreferences.Editor sharedPreferencesEditor;
-
     private static String VISIOURL = "VISIOURL";
     private static String MAILSERVICEURL = "MAILSERVICEURL";
     private static String DISCLAIMER_DONE = "DISCLAIMER_DONE";
@@ -23,7 +21,6 @@ public class SharedPreferencesManager {
 
     synchronized public static String getVisioUrl() {
         return sharedPreferences.getString(VISIOURL, "https://talk.vasanthv.com/");
-
     }
 
     synchronized public static void setVisioUrl(String VisioUrl) {
