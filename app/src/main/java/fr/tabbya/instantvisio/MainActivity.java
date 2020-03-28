@@ -84,7 +84,7 @@ public class MainActivity extends Activity {
 
         button = findViewById(R.id.button);
         button.setOnClickListener(v -> {
-            if (simDevice&&ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            if (simDevice && ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
                 /** Permission SEND_SMS is not granted let's ask for it */
                 ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.SEND_SMS}, MY_PERMISSIONS_REQUEST_SEND_SMS);
             } else launchVisio();
