@@ -16,10 +16,14 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
 import com.google.firebase.functions.FirebaseFunctions;
+
 import org.json.JSONObject;
+
 import java.io.DataOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -67,11 +71,6 @@ public class MainActivity extends Activity {
         setContentView(R.layout.main_activity);
         isSimSupport();
 
-        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-            /** Permission SEND_SMS is not granted let's ask for it */
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.SEND_SMS}, MY_PERMISSIONS_REQUEST_SEND_SMS);
-        }
-
         nameField = findViewById(R.id.name_edit);
         phoneField = findViewById(R.id.phone_edit);
         emailField = findViewById(R.id.email_edit);
@@ -85,7 +84,7 @@ public class MainActivity extends Activity {
 
         button = findViewById(R.id.button);
         button.setOnClickListener(v -> {
-            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
+            if (simDevice&&ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
                 /** Permission SEND_SMS is not granted let's ask for it */
                 ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.SEND_SMS}, MY_PERMISSIONS_REQUEST_SEND_SMS);
             } else launchVisio();
@@ -101,13 +100,13 @@ public class MainActivity extends Activity {
             String name = getFieldValue(nameField);
 
             mFirebaseService.getVisioUrl(name, phone, email)
-                .subscribe((visionUrl, throwable) -> {
-                    String message = getMessageToSend(visionUrl);
-                    Log.d(TAG, "message to send : " + message);
-                    inviteUserToVision(message);
-                    Log.d("VISION_URL", visionUrl);
-                    openVisionOnBrowser(visionUrl);
-                });
+                    .subscribe((visionUrl, throwable) -> {
+                        String message = getMessageToSend(visionUrl);
+                        Log.d(TAG, "message to send : " + message);
+                        inviteUserToVision(message);
+                        Log.d("VISION_URL", visionUrl);
+                        openVisionOnBrowser(visionUrl);
+                    });
         }
     }
 
