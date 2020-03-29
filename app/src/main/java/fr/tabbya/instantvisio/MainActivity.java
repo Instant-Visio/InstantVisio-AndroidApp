@@ -131,7 +131,6 @@ public class MainActivity extends Activity {
 
     public void inviteUserToVision(String message) {
         if (hasSms()) sendSms(message);
-        if (hasEmail()) sendMail(MainActivity.this, message);
     }
 
     public boolean hasSms() {
@@ -203,56 +202,5 @@ public class MainActivity extends Activity {
                 Log.d(TAG, "SIM_STATE_UNKNOWN -> notSimDevice is " + simDevice);
                 break;
         }
-    }
-
-    public void sendMail(final Context context, String message) {
-        final String requestURL = SharedPreferencesManager.getMailServiceUrl();
-        final JSONObject payload = new JSONObject();
-
-        try {
-            payload.put("name", "Demande URGENTE de visiophonie de votre proche");
-            payload.put("mail", String.valueOf(emailField.getText()));
-            payload.put("html", message);
-
-            //TODO: check if this N/A breaks everything
-            payload.put("uuid", "N/A");
-        } catch (Exception ignored) {
-        }
-
-        Thread executionThread = new Thread(new Runnable() {
-            String response;
-
-            @Override
-            public void run() {
-                try {
-                    final URL url = new URL(requestURL);
-
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("POST");
-                    conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-                    conn.setRequestProperty("Accept", "application/json");
-                    conn.setDoInput(true);
-                    conn.setDoOutput(true);
-
-                    Log.i(TAG, payload.toString());
-
-                    DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-                    dos.write(payload.toString().getBytes(StandardCharsets.UTF_8));
-
-                    dos.flush();
-                    dos.close();
-
-                    Log.i(TAG, String.valueOf(conn.getResponseCode()));
-                    response = conn.getResponseMessage();
-                    Log.i(TAG, response);
-
-                    conn.disconnect();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        });
-
-        executionThread.start();
     }
 }
