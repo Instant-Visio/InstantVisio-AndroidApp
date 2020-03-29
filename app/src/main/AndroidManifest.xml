@@ -27,6 +27,10 @@
         <activity
             android:name=".Disclaimer"
             android:screenOrientation="fullSensor"/>
+
+        <activity
+            android:name=".VideoCallActivity"
+            android:screenOrientation="fullSensor" />
     </application>
 
 

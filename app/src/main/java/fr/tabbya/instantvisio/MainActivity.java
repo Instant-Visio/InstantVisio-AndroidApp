@@ -105,7 +105,8 @@ public class MainActivity extends Activity {
                         Log.d(TAG, "message to send : " + message);
                         inviteUserToVision(message);
                         Log.d("VISION_URL", visionUrl);
-                        openVisionOnBrowser(visionUrl);
+                        openVisionOnWebview(visionUrl);
+//                        openVisionOnBrowser(visionUrl);
                     });
         }
     }
@@ -127,6 +128,15 @@ public class MainActivity extends Activity {
     public void openVisionOnBrowser(String url) {
         Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
         startActivity(browserIntent);
+    }
+
+    public static String VISIO_URL_EXTRA = "visioUrl";
+    public void openVisionOnWebview(String visioUrl) {
+        Intent videoCallActivityIntent = new Intent(this, VideoCallActivity.class);
+        Bundle params = new Bundle();
+        params.putString(VISIO_URL_EXTRA, visioUrl);
+        videoCallActivityIntent.putExtras(params);
+        startActivity(videoCallActivityIntent);
     }
 
     public void inviteUserToVision(String message) {
