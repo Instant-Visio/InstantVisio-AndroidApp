@@ -131,6 +131,7 @@ public class MainActivity extends Activity {
     }
 
     public static String VISIO_URL_EXTRA = "visioUrl";
+
     public void openVisionOnWebview(String visioUrl) {
         Intent videoCallActivityIntent = new Intent(this, VideoCallActivity.class);
         Bundle params = new Bundle();
