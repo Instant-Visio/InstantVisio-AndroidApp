@@ -22,12 +22,6 @@ import androidx.core.content.ContextCompat;
 
 import com.google.firebase.functions.FirebaseFunctions;
 
-import org.json.JSONObject;
-
-import java.io.DataOutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 /**
@@ -44,6 +38,8 @@ public class MainActivity extends Activity {
     String SENT = "SMS_SENT";
     String DELIVERED = "SMS_DELIVERED";
     private static final int MY_PERMISSIONS_REQUEST_SEND_SMS = 125;
+    private static final int MY_PERMISSIONS_REQUEST_CAMERA = 126;
+    private static final int MY_PERMISSIONS_REQUEST_RECORD_AUDIO = 127;
     private static boolean simDevice;
     private Button button;
     private TextView phoneTitle;
@@ -52,12 +48,15 @@ public class MainActivity extends Activity {
     private EditText emailField;
     private FirebaseFunctions mFunctions;
     private FirebaseService mFirebaseService;
+    private long lastClickTime;
+    private long now;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mFunctions = FirebaseFunctions.getInstance();
         mFirebaseService = new FirebaseService(mFunctions);
+        lastClickTime = 0;
 
         SharedPreferencesManager.initializePreferences(MainActivity.this);
         if (!SharedPreferencesManager.getDisclaimerDone()) {
@@ -87,27 +86,57 @@ public class MainActivity extends Activity {
             if (simDevice && ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
                 /** Permission SEND_SMS is not granted let's ask for it */
                 ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.SEND_SMS}, MY_PERMISSIONS_REQUEST_SEND_SMS);
-            } else launchVisio();
+            }
+
+            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                /** Permission RECORD_AUDIO is not granted let's ask for it */
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.RECORD_AUDIO}, MY_PERMISSIONS_REQUEST_RECORD_AUDIO);
+            }
+
+            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                /** Permission CAMERA is not granted let's ask for it */
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA}, MY_PERMISSIONS_REQUEST_CAMERA);
+            }
+
+            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
+                    ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
+
+                launchVisio();
         });
     }
 
     public void launchVisio() {
-        if (!hasSms() && !hasEmail()) {
-            Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
-        } else {
-            String phone = getFieldValue(phoneField);
-            String email = getFieldValue(emailField);
-            String name = getFieldValue(nameField);
 
-            mFirebaseService.getVisioUrl(name, phone, email)
-                    .subscribe((visionUrl, throwable) -> {
-                        String message = getMessageToSend(visionUrl);
-                        Log.d(TAG, "message to send : " + message);
-                        inviteUserToVision(message);
-                        Log.d("VISION_URL", visionUrl);
-                        openVisionOnWebview(visionUrl);
+        now = System.currentTimeMillis();
+        long compare = now - lastClickTime;
+
+        if (compare <= 2000) {
+            Log.d(TAG, "compare  is :"+compare);
+            //do nothing
+        } else {
+            lastClickTime=now;
+            Log.d(TAG, "compare  is :"+compare);
+
+            if (!hasSms() && !hasEmail()) {
+                Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(MainActivity.this, R.string.toast_launching, Toast.LENGTH_SHORT).show();
+
+                String phone = getFieldValue(phoneField);
+                String email = getFieldValue(emailField);
+                String name = getFieldValue(nameField);
+
+                mFirebaseService.getVisioUrl(name, phone, email)
+                        .subscribe((visionUrl, throwable) -> {
+                            String message = getMessageToSend(visionUrl);
+                            Log.d(TAG, "message to send : " + message);
+                            inviteUserToVision(message);
+                            Log.d("VISION_URL", visionUrl);
+                            openVisionOnWebview(visionUrl);
 //                        openVisionOnBrowser(visionUrl);
-                    });
+                        });
+            }
         }
     }
 
@@ -131,6 +160,7 @@ public class MainActivity extends Activity {
     }
 
     public static String VISIO_URL_EXTRA = "visioUrl";
+
     public void openVisionOnWebview(String visioUrl) {
         Intent videoCallActivityIntent = new Intent(this, VideoCallActivity.class);
         Bundle params = new Bundle();
