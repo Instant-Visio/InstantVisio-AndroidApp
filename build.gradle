@@ -28,8 +28,8 @@ allprojects {
         google()
         maven { url 'https://jitpack.io' }
 
-        /* RxJava3 integration */
-        maven { url "https://oss.jfrog.org/libs-snapshot" }
+//        /* RxJava3 integration */
+//        maven { url "https://oss.jfrog.org/libs-snapshot" }
     }
 }
 
