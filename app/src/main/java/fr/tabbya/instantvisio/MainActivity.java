@@ -1,11 +1,9 @@
 package fr.tabbya.instantvisio;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.telephony.SmsManager;
@@ -16,13 +14,12 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
+import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.functions.FirebaseFunctions;
-
+import com.tbruyelle.rxpermissions2.RxPermissions;
 import java.util.ArrayList;
+import io.reactivex.Single;
+import io.reactivex.schedulers.Schedulers;
 
 /**
  * Copyright (c) 2019 - Stéphane Luçon 20/03/2020
@@ -33,14 +30,9 @@ import java.util.ArrayList;
  * <p>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
     private static String TAG = "MainActivity";
-    String SENT = "SMS_SENT";
-    String DELIVERED = "SMS_DELIVERED";
-    private static final int MY_PERMISSIONS_REQUEST_SEND_SMS = 125;
-    private static final int MY_PERMISSIONS_REQUEST_CAMERA = 126;
-    private static final int MY_PERMISSIONS_REQUEST_RECORD_AUDIO = 127;
-    private static boolean simDevice;
+    private static boolean mIsSimSupported;
     private Button button;
     private TextView phoneTitle;
     private EditText nameField;
@@ -48,15 +40,14 @@ public class MainActivity extends Activity {
     private EditText emailField;
     private FirebaseFunctions mFunctions;
     private FirebaseService mFirebaseService;
-    private long lastClickTime;
-    private long now;
+    private RxPermissions rxPermissions;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mFunctions = FirebaseFunctions.getInstance();
         mFirebaseService = new FirebaseService(mFunctions);
-        lastClickTime = 0;
+        rxPermissions = new RxPermissions(this);
 
         SharedPreferencesManager.initializePreferences(MainActivity.this);
         if (!SharedPreferencesManager.getDisclaimerDone()) {
@@ -68,76 +59,61 @@ public class MainActivity extends Activity {
         }
 
         setContentView(R.layout.main_activity);
-        isSimSupport();
 
         nameField = findViewById(R.id.name_edit);
         phoneField = findViewById(R.id.phone_edit);
         emailField = findViewById(R.id.email_edit);
         phoneTitle = findViewById(R.id.phone_title);
 
-        if (!simDevice) {
+        mIsSimSupported = isSimSupported();
+        if (!mIsSimSupported) {
             /** we hide SMS sending option on non SIM device */
             phoneTitle.setVisibility(View.INVISIBLE);
             phoneField.setVisibility(View.INVISIBLE);
         }
 
         button = findViewById(R.id.button);
-        button.setOnClickListener(v -> {
-            if (simDevice && ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
-                /** Permission SEND_SMS is not granted let's ask for it */
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.SEND_SMS}, MY_PERMISSIONS_REQUEST_SEND_SMS);
-            }
-
-            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                /** Permission RECORD_AUDIO is not granted let's ask for it */
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.RECORD_AUDIO}, MY_PERMISSIONS_REQUEST_RECORD_AUDIO);
-            }
-
-            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                /** Permission CAMERA is not granted let's ask for it */
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA}, MY_PERMISSIONS_REQUEST_CAMERA);
-            }
-
-            if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
-
-                launchVisio();
-        });
+        button.setOnClickListener(v -> launchVisio());
     }
 
     public void launchVisio() {
-
-        now = System.currentTimeMillis();
-        long compare = now - lastClickTime;
-
-        if (compare <= 2000) {
-            Log.d(TAG, "compare  is :"+compare);
-            //do nothing
+        if (!hasSms() && !hasEmail()) {
+            Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
         } else {
-            lastClickTime=now;
-            Log.d(TAG, "compare  is :"+compare);
+            Toast.makeText(MainActivity.this, R.string.toast_launching, Toast.LENGTH_SHORT).show();
 
-            if (!hasSms() && !hasEmail()) {
-                Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(MainActivity.this, R.string.toast_launching, Toast.LENGTH_SHORT).show();
+            String phone = getFieldValue(phoneField);
+            String email = getFieldValue(emailField);
+            String name = getFieldValue(nameField);
 
-                String phone = getFieldValue(phoneField);
-                String email = getFieldValue(emailField);
-                String name = getFieldValue(nameField);
-
-                mFirebaseService.getVisioUrl(name, phone, email)
-                        .subscribe((visionUrl, throwable) -> {
-                            String message = getMessageToSend(visionUrl);
-                            Log.d(TAG, "message to send : " + message);
-                            inviteUserToVision(message);
-                            Log.d("VISION_URL", visionUrl);
-                            openVisionOnWebview(visionUrl);
+            askVideoCallPermissions()
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .flatMap(granted -> {
+                    Log.d("MainActivity: ", "Permissions request: " + (granted ? "granted" : "denied"));
+                    return granted ? Single.just(true) : Single.error(new Throwable("Permission missing"));
+                })
+                .flatMap(granted -> mFirebaseService.getVisioUrl(name, phone, email))
+                .subscribe(visionUrl -> {
+                    String message = getMessageToSend(visionUrl);
+                    Log.d(TAG, "sms receiver phone number: " + phone);
+                    Log.d(TAG, "message to send : " + message);
+                    Log.d("VISION_URL", visionUrl);
+                    openVisionOnWebview(visionUrl, phone, message);
 //                        openVisionOnBrowser(visionUrl);
-                        });
-            }
+                }, error -> {
+                    Log.d("MainActivity", "Permissions denied: " + error);
+                });
         }
+    }
+
+    public Single<Boolean> askVideoCallPermissions() {
+        return Single.fromObservable(rxPermissions
+            .request(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.MODIFY_AUDIO_SETTINGS
+            ));
     }
 
     public String getFieldValue(EditText textField) {
@@ -160,17 +136,24 @@ public class MainActivity extends Activity {
     }
 
     public static String VISIO_URL_EXTRA = "visioUrl";
+    public static String VISIO_INVITE_PHONE_NUMBER = "VISIO_INVITE_PHONE_NUMBER";
+    public static String VISIO_INVITE_SMS_BODY = "VISIO_INVITE_SMS_BODY";
 
-    public void openVisionOnWebview(String visioUrl) {
+    public void openVisionOnWebview(String visioUrl, String phoneNumber, String message) {
         Intent videoCallActivityIntent = new Intent(this, VideoCallActivity.class);
         Bundle params = new Bundle();
+
+        inviteUserToVision(phoneNumber, message, params);
         params.putString(VISIO_URL_EXTRA, visioUrl);
         videoCallActivityIntent.putExtras(params);
         startActivity(videoCallActivityIntent);
     }
 
-    public void inviteUserToVision(String message) {
-        if (hasSms()) sendSms(message);
+    public void inviteUserToVision(String phoneNumber, String message, Bundle params) {
+        if (hasSms()) {
+            params.putString(VISIO_INVITE_PHONE_NUMBER, phoneNumber);
+            params.putString(VISIO_INVITE_SMS_BODY, message);
+        }
     }
 
     public boolean hasSms() {
@@ -204,43 +187,47 @@ public class MainActivity extends Activity {
         smsManager.sendMultipartTextMessage(String.valueOf(phoneField.getText()), null, parts, sentIntents, deliveryIntents);
     }
 
-    public void isSimSupport() {
+    public boolean isSimSupported() {
         /** we need to check if we have a SIM device or not (tablet/phone without a SIM)*/
         TelephonyManager telMgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         int simState = telMgr.getSimState();
         Log.d(TAG, "SIM_STATE CHECK : state int is " + simState);
-
+        boolean isSimSupported;
         switch (simState) {
             case TelephonyManager.SIM_STATE_NOT_READY:
-                simDevice = false;
-                Log.d(TAG, "SIM_STATE_NOT_READY -> notSimDevice is " + simDevice);
+                isSimSupported = false;
+                Log.d(TAG, "SIM_STATE_NOT_READY -> notSimDevice is " + isSimSupported);
                 // value is 6, this is the one actually returned on a wifi tab...
                 break;
             case TelephonyManager.SIM_STATE_ABSENT:
-                simDevice = false;
-                Log.d(TAG, "SIM_STATE_ABSENT -> notSimDevice is " + simDevice);
+                isSimSupported = false;
+                Log.d(TAG, "SIM_STATE_ABSENT -> notSimDevice is " + isSimSupported);
                 break;
             case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
-                simDevice = false;
-                Log.d(TAG, "SIM_STATE_NETWORK_LOCKED -> notSimDevice is " + simDevice);
+                isSimSupported = false;
+                Log.d(TAG, "SIM_STATE_NETWORK_LOCKED -> notSimDevice is " + isSimSupported);
                 break;
             case TelephonyManager.SIM_STATE_PIN_REQUIRED:
-                simDevice = false;
-                Log.d(TAG, "SIM_STATE_PIN_REQUIRED -> notSimDevice is " + simDevice);
+                isSimSupported = false;
+                Log.d(TAG, "SIM_STATE_PIN_REQUIRED -> notSimDevice is " + isSimSupported);
 
                 break;
             case TelephonyManager.SIM_STATE_PUK_REQUIRED:
-                simDevice = false;
-                Log.d(TAG, "SIM_STATE_PUK_REQUIRED -> notSimDevice is " + simDevice);
+                isSimSupported = false;
+                Log.d(TAG, "SIM_STATE_PUK_REQUIRED -> notSimDevice is " + isSimSupported);
                 break;
             case TelephonyManager.SIM_STATE_READY:
-                simDevice = true;
-                Log.d(TAG, "SIM_STATE_READY -> notSimDevice is " + simDevice);
+                isSimSupported = true;
+                Log.d(TAG, "SIM_STATE_READY -> notSimDevice is " + isSimSupported);
                 break;
             case TelephonyManager.SIM_STATE_UNKNOWN:
-                simDevice = false;
-                Log.d(TAG, "SIM_STATE_UNKNOWN -> notSimDevice is " + simDevice);
+                isSimSupported = false;
+                Log.d(TAG, "SIM_STATE_UNKNOWN -> notSimDevice is " + isSimSupported);
                 break;
+            default:
+                isSimSupported = true;
         }
+
+        return isSimSupported;
     }
 }

@@ -5,8 +5,8 @@ import java.util.HashMap;
 import java.util.Map;
 import fr.tabbya.instantvisio.jsonconverter.JsonConverter;
 import fr.tabbya.instantvisio.jsonconverter.VisioData;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.reactivex.Single;
+import io.reactivex.schedulers.Schedulers;
 
 public class FirebaseService {
     private FirebaseFunctions mFunctions;
