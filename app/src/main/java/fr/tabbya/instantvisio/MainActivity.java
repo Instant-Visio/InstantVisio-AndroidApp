@@ -40,7 +40,6 @@ public class MainActivity extends AppCompatActivity {
     public static final String VISIO_INVITE_PHONE_NUMBER = "VISIO_INVITE_PHONE_NUMBER";
     public static final String VISIO_INVITE_SMS_BODY = "VISIO_INVITE_SMS_BODY";
 
-    private static boolean mIsSimSupported;
     private Button button;
     private TextView phoneTitle;
     private EditText nameField;
@@ -75,8 +74,8 @@ public class MainActivity extends AppCompatActivity {
         phoneTitle = findViewById(R.id.phone_title);
         mLoader = findViewById(R.id.loading);
 
-        mIsSimSupported = isSimSupported();
-        if (!mIsSimSupported) {
+
+        if (!hasSimCard()) {
             /** we hide SMS sending option on non SIM device */
             phoneTitle.setVisibility(View.INVISIBLE);
             phoneField.setVisibility(View.INVISIBLE);
@@ -212,47 +211,10 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
     }
 
-    public boolean isSimSupported() {
+    public boolean hasSimCard() {
         /** we need to check if we have a SIM device or not (tablet/phone without a SIM)*/
         TelephonyManager telMgr = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
         int simState = telMgr.getSimState();
-        Log.d(TAG, "SIM_STATE CHECK : state int is " + simState);
-        boolean isSimSupported;
-        switch (simState) {
-            case TelephonyManager.SIM_STATE_NOT_READY:
-                isSimSupported = false;
-                Log.d(TAG, "SIM_STATE_NOT_READY -> notSimDevice is " + isSimSupported);
-                // value is 6, this is the one actually returned on a wifi tab...
-                break;
-            case TelephonyManager.SIM_STATE_ABSENT:
-                isSimSupported = false;
-                Log.d(TAG, "SIM_STATE_ABSENT -> notSimDevice is " + isSimSupported);
-                break;
-            case TelephonyManager.SIM_STATE_NETWORK_LOCKED:
-                isSimSupported = false;
-                Log.d(TAG, "SIM_STATE_NETWORK_LOCKED -> notSimDevice is " + isSimSupported);
-                break;
-            case TelephonyManager.SIM_STATE_PIN_REQUIRED:
-                isSimSupported = false;
-                Log.d(TAG, "SIM_STATE_PIN_REQUIRED -> notSimDevice is " + isSimSupported);
-
-                break;
-            case TelephonyManager.SIM_STATE_PUK_REQUIRED:
-                isSimSupported = false;
-                Log.d(TAG, "SIM_STATE_PUK_REQUIRED -> notSimDevice is " + isSimSupported);
-                break;
-            case TelephonyManager.SIM_STATE_READY:
-                isSimSupported = true;
-                Log.d(TAG, "SIM_STATE_READY -> notSimDevice is " + isSimSupported);
-                break;
-            case TelephonyManager.SIM_STATE_UNKNOWN:
-                isSimSupported = false;
-                Log.d(TAG, "SIM_STATE_UNKNOWN -> notSimDevice is " + isSimSupported);
-                break;
-            default:
-                isSimSupported = true;
-        }
-
-        return isSimSupported;
+        return simState != TelephonyManager.SIM_STATE_ABSENT;
     }
 }
