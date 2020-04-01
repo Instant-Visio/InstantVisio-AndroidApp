@@ -1,9 +1,12 @@
 package fr.tabbya.instantvisio;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
 import android.telephony.SmsManager;
@@ -17,7 +20,6 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.tbruyelle.rxpermissions2.RxPermissions;
-import java.util.ArrayList;
 import io.reactivex.Single;
 import io.reactivex.schedulers.Schedulers;
 
@@ -32,6 +34,11 @@ import io.reactivex.schedulers.Schedulers;
  */
 public class MainActivity extends AppCompatActivity {
     private static String TAG = "MainActivity";
+    private static final String SMS_SENT = "SMS_SENT";
+    public static final String VISIO_URL_EXTRA = "visioUrl";
+    public static final String VISIO_INVITE_PHONE_NUMBER = "VISIO_INVITE_PHONE_NUMBER";
+    public static final String VISIO_INVITE_SMS_BODY = "VISIO_INVITE_SMS_BODY";
+
     private static boolean mIsSimSupported;
     private Button button;
     private TextView phoneTitle;
@@ -80,39 +87,45 @@ public class MainActivity extends AppCompatActivity {
         if (!hasSms() && !hasEmail()) {
             Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
         } else {
-            Toast.makeText(MainActivity.this, R.string.toast_launching, Toast.LENGTH_SHORT).show();
-
             String phone = getFieldValue(phoneField);
             String email = getFieldValue(emailField);
             String name = getFieldValue(nameField);
 
-            askVideoCallPermissions()
+            askPermissions()
                 .subscribeOn(Schedulers.io())
                 .observeOn(Schedulers.io())
                 .flatMap(granted -> {
                     Log.d("MainActivity: ", "Permissions request: " + (granted ? "granted" : "denied"));
                     return granted ? Single.just(true) : Single.error(new Throwable("Permission missing"));
                 })
-                .flatMap(granted -> mFirebaseService.getVisioUrl(name, phone, email))
+                .flatMap(granted -> {
+//                    return Single.just("https://www.google.com");
+                    return mFirebaseService.getVisioUrl(name, phone, email);
+                })
                 .subscribe(visionUrl -> {
                     String message = getMessageToSend(visionUrl);
                     Log.d(TAG, "sms receiver phone number: " + phone);
                     Log.d(TAG, "message to send : " + message);
                     Log.d("VISION_URL", visionUrl);
-                    openVisionOnWebview(visionUrl, phone, message);
-//                        openVisionOnBrowser(visionUrl);
+
+                    if(hasSms()) inviteUserAndOpenVisio(phone, message, visionUrl);
+                    else {
+                        showToastMessage(R.string.toast_launching);
+                        openVisionOnWebview(visionUrl);
+                    }
                 }, error -> {
                     Log.d("MainActivity", "Permissions denied: " + error);
                 });
         }
     }
 
-    public Single<Boolean> askVideoCallPermissions() {
+    public Single<Boolean> askPermissions() {
         return Single.fromObservable(rxPermissions
             .request(
                 Manifest.permission.CAMERA,
                 Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.MODIFY_AUDIO_SETTINGS
+                Manifest.permission.MODIFY_AUDIO_SETTINGS,
+                Manifest.permission.SEND_SMS
             ));
     }
 
@@ -135,25 +148,16 @@ public class MainActivity extends AppCompatActivity {
         startActivity(browserIntent);
     }
 
-    public static String VISIO_URL_EXTRA = "visioUrl";
-    public static String VISIO_INVITE_PHONE_NUMBER = "VISIO_INVITE_PHONE_NUMBER";
-    public static String VISIO_INVITE_SMS_BODY = "VISIO_INVITE_SMS_BODY";
-
-    public void openVisionOnWebview(String visioUrl, String phoneNumber, String message) {
+    public void openVisionOnWebview(String visioUrl) {
         Intent videoCallActivityIntent = new Intent(this, VideoCallActivity.class);
         Bundle params = new Bundle();
-
-        inviteUserToVision(phoneNumber, message, params);
         params.putString(VISIO_URL_EXTRA, visioUrl);
         videoCallActivityIntent.putExtras(params);
         startActivity(videoCallActivityIntent);
     }
 
-    public void inviteUserToVision(String phoneNumber, String message, Bundle params) {
-        if (hasSms()) {
-            params.putString(VISIO_INVITE_PHONE_NUMBER, phoneNumber);
-            params.putString(VISIO_INVITE_SMS_BODY, message);
-        }
+    public void inviteUserAndOpenVisio(String phoneNumber, String message, String visioUrl) {
+        waitForSmsInviteToBeSent(phoneNumber, message, visioUrl);
     }
 
     public boolean hasSms() {
@@ -164,27 +168,38 @@ public class MainActivity extends AppCompatActivity {
         return !String.valueOf(emailField.getText()).equals("");
     }
 
-    public void sendSms(String message) {
+    public void waitForSmsInviteToBeSent(String phoneNumber, String message, String visioUrl) {
         SmsManager smsManager = SmsManager.getDefault();
+        PendingIntent sentPI = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(SMS_SENT), PendingIntent.FLAG_UPDATE_CURRENT);
+        registerReceiver(new BroadcastReceiver(){
+            @Override
+            public void onReceive(Context arg0, Intent arg1) {
+                switch (getResultCode()) {
+                    case Activity.RESULT_OK:
+                        showToastMessage(R.string.toast_invite_and_launch_visio);
+                        openVisionOnWebview(visioUrl);
+                        break;
+                    case SmsManager.RESULT_ERROR_NO_SERVICE:
+                        Log.d("[SMS-SEND]", "No service");
+                        showToastMessage("No service");
+                        break;
+                    default:
+                        Log.d("[SMS-SEND]", "Generic sms error");
+                        showToastMessage("Sms could not be sent");
+                        break;
+                }
+            }
+        }, new IntentFilter(SMS_SENT));
+        smsManager.sendTextMessage(phoneNumber, null, message, sentPI, null);
+    }
 
-        ArrayList<String> parts = smsManager.divideMessage(message);
-        int messageCount = parts.size();
+    public void showToastMessage(String message) {
+        Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
+    }
 
-        Log.d("Message Count", "Message Count: " + messageCount);
-
-        ArrayList<PendingIntent> deliveryIntents = new ArrayList<>();
-        ArrayList<PendingIntent> sentIntents = new ArrayList<>();
-
-        for (int i = 0; i < parts.size(); i++) {
-            PendingIntent sentPI = PendingIntent.getBroadcast(getApplicationContext(), i, new Intent("SMS_SENT"), i);
-            PendingIntent deliveredPI = PendingIntent.getBroadcast(getApplicationContext(), i, new Intent("SMS_DELIVERED"), i);
-
-            sentIntents.add(sentPI);
-            deliveryIntents.add(deliveredPI);
-        }
-        Log.d(TAG, "ready to sendMultipartMessage " + parts);
-
-        smsManager.sendMultipartTextMessage(String.valueOf(phoneField.getText()), null, parts, sentIntents, deliveryIntents);
+    public void showToastMessage(int messageId) {
+        String message = getResources().getString(messageId);
+        Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
     }
 
     public boolean isSimSupported() {

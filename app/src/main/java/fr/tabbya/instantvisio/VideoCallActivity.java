@@ -27,12 +27,6 @@ public class VideoCallActivity extends AppCompatActivity {
         String visioUrl = getVisioUrl();
         Log.d("[VideoCallActivity]", "starting video call on address: " + visioUrl);
         mWebView.loadUrl(visioUrl);
-
-        Uri uri = Uri.parse("smsto:" + mPhoneNumber);
-        Intent intent = new Intent(Intent.ACTION_SENDTO, uri);
-        intent.putExtra("address","06000000");
-        intent.putExtra("sms_body", mSmsBody);
-        startActivity(intent);
     }
 
     public String getVisioUrl() {
