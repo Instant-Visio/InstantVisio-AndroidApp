@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.functions.FirebaseFunctions;
 import com.tbruyelle.rxpermissions2.RxPermissions;
 import io.reactivex.Single;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
 
 /**
@@ -48,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseFunctions mFunctions;
     private FirebaseService mFirebaseService;
     private RxPermissions rxPermissions;
+    com.github.ybq.android.spinkit.SpinKitView mLoader;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -71,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
         phoneField = findViewById(R.id.phone_edit);
         emailField = findViewById(R.id.email_edit);
         phoneTitle = findViewById(R.id.phone_title);
+        mLoader = findViewById(R.id.loading);
 
         mIsSimSupported = isSimSupported();
         if (!mIsSimSupported) {
@@ -84,16 +87,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void launchVisio() {
+        button.setEnabled(false);
         if (!hasSms() && !hasEmail()) {
             Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
+            button.setEnabled(true);
         } else {
             String phone = getFieldValue(phoneField);
             String email = getFieldValue(emailField);
             String name = getFieldValue(nameField);
+            mLoader.setVisibility(View.VISIBLE);
 
             askPermissions()
                 .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
                 .flatMap(granted -> {
                     Log.d("MainActivity: ", "Permissions request: " + (granted ? "granted" : "denied"));
                     return granted ? Single.just(true) : Single.error(new Throwable("Permission missing"));
@@ -115,6 +121,8 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }, error -> {
                     Log.d("MainActivity", "Permissions denied: " + error);
+                    mLoader.setVisibility(View.GONE);
+                    button.setEnabled(true);
                 });
         }
     }
@@ -149,10 +157,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openVisionOnWebview(String visioUrl) {
+        mLoader.setVisibility(View.GONE);
         Intent videoCallActivityIntent = new Intent(this, VideoCallActivity.class);
         Bundle params = new Bundle();
         params.putString(VISIO_URL_EXTRA, visioUrl);
         videoCallActivityIntent.putExtras(params);
+        button.setEnabled(true);
         startActivity(videoCallActivityIntent);
     }
 
