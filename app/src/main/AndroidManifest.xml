@@ -44,6 +44,6 @@
 
         <activity
             android:name=".VideoCallActivity"
-            android:screenOrientation="fullSensor" />
+            android:screenOrientation="landscape" />
     </application>
 </manifest>
