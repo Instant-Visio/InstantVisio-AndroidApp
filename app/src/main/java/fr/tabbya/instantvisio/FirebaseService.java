@@ -1,12 +1,15 @@
 package fr.tabbya.instantvisio;
 
+import android.util.Log;
+
 import com.google.firebase.functions.FirebaseFunctions;
+
 import java.util.HashMap;
 import java.util.Map;
+
 import fr.tabbya.instantvisio.jsonconverter.JsonConverter;
 import fr.tabbya.instantvisio.jsonconverter.VisioData;
 import io.reactivex.Single;
-import io.reactivex.schedulers.Schedulers;
 
 public class FirebaseService {
     private FirebaseFunctions mFunctions;
@@ -27,10 +30,14 @@ public class FirebaseService {
                     String visioUrl = visionData.getUrl();
                     emitter.onSuccess(visioUrl);
                 } catch (Exception e) {
+                    Log.d("Firebase", "error: " + e);
                     emitter.onError(new Throwable(e));
                 }
+            }).addOnFailureListener(e -> {
+                Log.d("Firebase", "failure listener: " + e);
+                emitter.onError(e);
             });
-        }).observeOn(Schedulers.io()).subscribeOn(Schedulers.io());
+        });
     }
 
     public Map<String, Object> getFirebaseFunctionArguments(String name, String phone, String email) {
@@ -38,6 +45,7 @@ public class FirebaseService {
         data.put("name", name);
         data.put("phone", phone);
         data.put("email", email);
+        data.put("platform", "web");
         return data;
     }
 }
