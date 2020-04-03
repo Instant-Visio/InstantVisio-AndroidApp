@@ -122,18 +122,6 @@ public class MainActivity extends AppCompatActivity {
 //                    return Single.just("https://www.google.com");
                     return mFirebaseService.getVisioUrl(name, phone, email);
                 })
-                .flatMap(visionUrl -> {
-                    if(hasSms()) {
-                        return askSmsPermissions()
-                            .flatMap(smsGranted -> {
-                                if(smsGranted) return Single.just(visionUrl);
-                                else {
-                                    String smsPermissionsMissingMessage = mResources.getString(R.string.accept_sms_permissions);
-                                    return Single.error(new Throwable(smsPermissionsMissingMessage));
-                                }
-                            });
-                    } else return Single.just(visionUrl);
-                })
                 .subscribe(visionUrl -> {
                     if(devserver)
                         visionUrl = "https://instantvisio-dev.web.app/visio"+visionUrl.substring(29);
@@ -154,13 +142,6 @@ public class MainActivity extends AppCompatActivity {
                     button.setEnabled(true);
                 });
         }
-    }
-
-    public Single<Boolean> askSmsPermissions() {
-        return Single.fromObservable(rxPermissions
-            .request(
-                Manifest.permission.SEND_SMS
-            ));
     }
 
     public Single<Boolean> askPermissions() {
@@ -214,14 +195,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void waitForSmsInviteToBeSent(String phoneNumber, String message, String visioUrl) {
-        SmsManager smsManager = SmsManager.getDefault();
-        PendingIntent sentPI = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(SMS_SENT), PendingIntent.FLAG_UPDATE_CURRENT);
+        Intent sendSmsIntent = getDefaultSmsSendIntent(phoneNumber, message);
+//        PendingIntent sentPI = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(Intent.ACTION_SENDTO), PendingIntent.FLAG_UPDATE_CURRENT);
         final String smsNotSentErrorMessage = mResources.getString(R.string.error_sending_sms);
         registerReceiver(new BroadcastReceiver(){
             @Override
             public void onReceive(Context arg0, Intent arg1) {
+                Log.d("[SMS]", "Intent result: " + arg0 + ", arg1: " + arg1);
                 switch (getResultCode()) {
                     case Activity.RESULT_OK:
+                        Log.d("[SMS-SEND]", "Intent result OK");
                         showToastMessage(R.string.toast_invite_and_launch_visio);
                         openVisionOnWebview(visioUrl);
                         break;
@@ -235,8 +218,17 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
             }
-        }, new IntentFilter(SMS_SENT));
-        smsManager.sendTextMessage(phoneNumber, null, message, sentPI, null);
+        }, new IntentFilter(Intent.ACTION_SENDTO));
+
+        startActivity(sendSmsIntent);
+    }
+
+    public Intent getDefaultSmsSendIntent(String phoneNumber, String message) {
+        Uri uri = Uri.parse("smsto:" + phoneNumber);
+        Intent intent = new Intent(Intent.ACTION_SENDTO, uri);
+        intent.putExtra("sms_body", message);
+        intent.putExtra("exit_on_sent", true);
+        return intent;
     }
 
     public void showToastMessage(String message) {
