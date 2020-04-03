@@ -7,5 +7,3 @@ Looking for the webb app? find it [here](https://github.com/Instant-Visio/Instan
 
 
 More info on the Hacking Health Camp 2020 slack, #instantvisio
-
-
