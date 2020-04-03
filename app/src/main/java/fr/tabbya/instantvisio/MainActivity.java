@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseFunctions mFunctions;
     private FirebaseService mFirebaseService;
     private RxPermissions rxPermissions;
+    private boolean devserver= true;
     com.github.ybq.android.spinkit.SpinKitView mLoader;
 
     @Override
@@ -108,6 +109,8 @@ public class MainActivity extends AppCompatActivity {
                     return mFirebaseService.getVisioUrl(name, phone, email);
                 })
                 .subscribe(visionUrl -> {
+                    if(devserver)
+                        visionUrl = "https://instantvisio-dev.web.app/visio"+visionUrl.substring(29);
                     String message = getMessageToSend(visionUrl);
                     Log.d(TAG, "sms receiver phone number: " + phone);
                     Log.d(TAG, "message to send : " + message);
