@@ -44,6 +44,7 @@
 
         <activity
             android:name=".VideoCallActivity"
+            android:theme="@style/AppTheme.NoActionBar"
             android:screenOrientation="landscape" />
     </application>
 </manifest>
