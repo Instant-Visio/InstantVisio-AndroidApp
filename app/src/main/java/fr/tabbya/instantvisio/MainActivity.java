@@ -48,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseFunctions mFunctions;
     private FirebaseService mFirebaseService;
     private RxPermissions rxPermissions;
-    private boolean devserver= true;
+    private boolean devserver = true;
     com.github.ybq.android.spinkit.SpinKitView mLoader;
 
     @Override
@@ -84,6 +84,12 @@ public class MainActivity extends AppCompatActivity {
 
         button = findViewById(R.id.button);
         button.setOnClickListener(v -> launchVisio());
+        askPermissions()
+            .subscribe(granted -> {
+                if(!granted) showToastMessage(R.string.accept_permissions);
+            }, throwable -> {
+                showToastMessage(R.string.accept_permissions);
+            });
     }
 
     public void launchVisio() {
@@ -102,11 +108,24 @@ public class MainActivity extends AppCompatActivity {
                 .observeOn(AndroidSchedulers.mainThread())
                 .flatMap(granted -> {
                     Log.d("MainActivity: ", "Permissions request: " + (granted ? "granted" : "denied"));
+                    String permissionsMissingErrorMessage = getResources().getString(R.string.accept_permissions);
                     return granted ? Single.just(true) : Single.error(new Throwable("Permission missing"));
                 })
                 .flatMap(granted -> {
 //                    return Single.just("https://www.google.com");
                     return mFirebaseService.getVisioUrl(name, phone, email);
+                })
+                .flatMap(visionUrl -> {
+                    if(hasSms()) {
+                        return askSmsPermissions()
+                            .flatMap(smsGranted -> {
+                                if(smsGranted) return Single.just(visionUrl);
+                                else {
+                                    String smsPermissionsMissingMessage = getResources().getString(R.string.accept_sms_permissions);
+                                    return Single.error(new Throwable(smsPermissionsMissingMessage));
+                                }
+                            });
+                    } else return Single.just(visionUrl);
                 })
                 .subscribe(visionUrl -> {
                     if(devserver)
@@ -123,10 +142,18 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }, error -> {
                     Log.d("MainActivity", "Permissions denied: " + error);
+                    showToastMessage(error.getMessage());
                     mLoader.setVisibility(View.GONE);
                     button.setEnabled(true);
                 });
         }
+    }
+
+    public Single<Boolean> askSmsPermissions() {
+        return Single.fromObservable(rxPermissions
+            .request(
+                Manifest.permission.SEND_SMS
+            ));
     }
 
     public Single<Boolean> askPermissions() {
@@ -134,8 +161,7 @@ public class MainActivity extends AppCompatActivity {
             .request(
                 Manifest.permission.CAMERA,
                 Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.MODIFY_AUDIO_SETTINGS,
-                Manifest.permission.SEND_SMS
+                Manifest.permission.MODIFY_AUDIO_SETTINGS
             ));
     }
 
@@ -183,6 +209,7 @@ public class MainActivity extends AppCompatActivity {
     public void waitForSmsInviteToBeSent(String phoneNumber, String message, String visioUrl) {
         SmsManager smsManager = SmsManager.getDefault();
         PendingIntent sentPI = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(SMS_SENT), PendingIntent.FLAG_UPDATE_CURRENT);
+        final String smsNotSentErrorMessage = getResources().getString(R.string.error_sending_sms);
         registerReceiver(new BroadcastReceiver(){
             @Override
             public void onReceive(Context arg0, Intent arg1) {
@@ -193,11 +220,11 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case SmsManager.RESULT_ERROR_NO_SERVICE:
                         Log.d("[SMS-SEND]", "No service");
-                        showToastMessage("No service");
+                        showToastMessage(smsNotSentErrorMessage);
                         break;
                     default:
                         Log.d("[SMS-SEND]", "Generic sms error");
-                        showToastMessage("Sms could not be sent");
+                        showToastMessage(smsNotSentErrorMessage);
                         break;
                 }
             }
