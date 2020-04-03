@@ -26,6 +26,6 @@
     <string name="accept_permissions">Veuillez accepter les permissions afin de démarrer la visioconférence</string>
     <string name="accept_sms_permissions">Veuillez accepter la permission afin d\'envoyer l\'invitation par SMS</string>
     <string name="error_sending_sms">Le SMS n\'a pa pu être envoyé</string>
-
+    <string name="error_phone_number_min_length">Le numéro specifié doit avoir au moins 6 caractères</string>
 
 </resources>

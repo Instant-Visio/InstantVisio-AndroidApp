@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.Resources;
 import android.net.Uri;
 import android.os.Bundle;
 import android.telephony.SmsManager;
@@ -48,7 +49,8 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseFunctions mFunctions;
     private FirebaseService mFirebaseService;
     private RxPermissions rxPermissions;
-    private boolean devserver = true;
+    private boolean devserver = false;
+    private Resources mResources;
     com.github.ybq.android.spinkit.SpinKitView mLoader;
 
     @Override
@@ -57,6 +59,7 @@ public class MainActivity extends AppCompatActivity {
         mFunctions = FirebaseFunctions.getInstance();
         mFirebaseService = new FirebaseService(mFunctions);
         rxPermissions = new RxPermissions(this);
+        mResources = getResources();
 
         SharedPreferencesManager.initializePreferences(MainActivity.this);
         if (!SharedPreferencesManager.getDisclaimerDone()) {
@@ -108,8 +111,12 @@ public class MainActivity extends AppCompatActivity {
                 .observeOn(AndroidSchedulers.mainThread())
                 .flatMap(granted -> {
                     Log.d("MainActivity: ", "Permissions request: " + (granted ? "granted" : "denied"));
-                    String permissionsMissingErrorMessage = getResources().getString(R.string.accept_permissions);
+                    String permissionsMissingErrorMessage = mResources.getString(R.string.accept_permissions);
                     return granted ? Single.just(true) : Single.error(new Throwable("Permission missing"));
+                })
+                .flatMap(granted -> {
+                    if(granted && phone.length() >= 6) return Single.just(granted);
+                    else return Single.error(new Throwable(mResources.getString(R.string.error_phone_number_min_length)));
                 })
                 .flatMap(granted -> {
 //                    return Single.just("https://www.google.com");
@@ -121,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
                             .flatMap(smsGranted -> {
                                 if(smsGranted) return Single.just(visionUrl);
                                 else {
-                                    String smsPermissionsMissingMessage = getResources().getString(R.string.accept_sms_permissions);
+                                    String smsPermissionsMissingMessage = mResources.getString(R.string.accept_sms_permissions);
                                     return Single.error(new Throwable(smsPermissionsMissingMessage));
                                 }
                             });
@@ -209,7 +216,7 @@ public class MainActivity extends AppCompatActivity {
     public void waitForSmsInviteToBeSent(String phoneNumber, String message, String visioUrl) {
         SmsManager smsManager = SmsManager.getDefault();
         PendingIntent sentPI = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(SMS_SENT), PendingIntent.FLAG_UPDATE_CURRENT);
-        final String smsNotSentErrorMessage = getResources().getString(R.string.error_sending_sms);
+        final String smsNotSentErrorMessage = mResources.getString(R.string.error_sending_sms);
         registerReceiver(new BroadcastReceiver(){
             @Override
             public void onReceive(Context arg0, Intent arg1) {
@@ -237,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void showToastMessage(int messageId) {
-        String message = getResources().getString(messageId);
+        String message = mResources.getString(messageId);
         Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
     }
 
