@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
                     return granted ? Single.just(true) : Single.error(new Throwable("Permission missing"));
                 })
                 .flatMap(granted -> {
-                    if(granted && phone.length() >= 6) return Single.just(granted);
+                    if(granted && (isSmsFieldValid() || hasEmail())) return Single.just(granted);
                     else return Single.error(new Throwable(mResources.getString(R.string.error_phone_number_min_length)));
                 })
                 .flatMap(granted -> {
@@ -133,6 +133,11 @@ public class MainActivity extends AppCompatActivity {
                     button.setEnabled(true);
                 });
         }
+    }
+
+    public boolean isSmsFieldValid() {
+        String phone = getFieldValue(phoneField);
+        return hasSms() && phone.length() >= 6;
     }
 
     public Single<Boolean> askPermissions() {
