@@ -27,5 +27,5 @@
     <string name="accept_sms_permissions">Veuillez accepter la permission afin d\'envoyer l\'invitation par SMS</string>
     <string name="error_sending_sms">Le SMS n\'a pa pu être envoyé</string>
     <string name="error_phone_number_min_length">Le numéro specifié doit avoir au moins 6 caractères</string>
-
+    <string name="error_invalid_email">L\'email n\'est pas valide</string>
 </resources>

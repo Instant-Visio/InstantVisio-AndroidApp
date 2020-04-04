@@ -109,8 +109,11 @@ public class MainActivity extends AppCompatActivity {
                     return granted ? Single.just(true) : Single.error(new Throwable("Permission missing"));
                 })
                 .flatMap(granted -> {
-                    if(granted && (isSmsFieldValid() || hasEmail())) return Single.just(granted);
-                    else return Single.error(new Throwable(mResources.getString(R.string.error_phone_number_min_length)));
+                    if(granted) {
+                        if(!isSmsFieldValid()) return Single.error(new Throwable(mResources.getString(R.string.error_phone_number_min_length)));
+                        else if(hasEmail() && !isEmailValid(email)) return Single.error(new Throwable(mResources.getString(R.string.error_invalid_email)));
+                        return Single.just(granted);
+                    } else return Single.error(new Throwable(mResources.getString(R.string.accept_permissions)));
                 })
                 .flatMap(granted -> {
 //                    return Single.just("https://www.google.com");
@@ -133,6 +136,10 @@ public class MainActivity extends AppCompatActivity {
                     button.setEnabled(true);
                 });
         }
+    }
+
+    boolean isEmailValid(CharSequence email) {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches();
     }
 
     public boolean isSmsFieldValid() {
