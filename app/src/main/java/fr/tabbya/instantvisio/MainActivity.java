@@ -94,6 +94,8 @@ public class MainActivity extends AppCompatActivity {
         if (!hasSms() && !hasEmail()) {
             Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
             button.setEnabled(true);
+        } else if (!hasName()) {
+            showToastMessage(R.string.error_invalid_name);
         } else {
             String phone = getFieldValue(phoneField);
             String email = getFieldValue(emailField);
@@ -192,7 +194,9 @@ public class MainActivity extends AppCompatActivity {
     public boolean hasSms() {
         return !String.valueOf(phoneField.getText()).equals("");
     }
-
+    public boolean hasName() {
+        return !String.valueOf(nameField.getText()).equals("");
+    }
     public boolean hasEmail() {
         return !String.valueOf(emailField.getText()).equals("");
     }
