@@ -87,12 +87,6 @@ public class MainActivity extends AppCompatActivity {
 
         button = findViewById(R.id.button);
         button.setOnClickListener(v -> launchVisio());
-        askPermissions()
-            .subscribe(granted -> {
-                if(!granted) showToastMessage(R.string.accept_permissions);
-            }, throwable -> {
-                showToastMessage(R.string.accept_permissions);
-            });
     }
 
     public void launchVisio() {
