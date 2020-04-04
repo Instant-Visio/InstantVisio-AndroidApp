@@ -9,8 +9,8 @@ android {
         applicationId "fr.tabbya.instantvisio"
         minSdkVersion 22
         targetSdkVersion 29
-        versionCode 8
-        versionName "1.0.7"
+        versionCode 9
+        versionName "1.0.8"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
