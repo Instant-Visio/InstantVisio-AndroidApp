@@ -122,18 +122,6 @@ public class MainActivity extends AppCompatActivity {
 //                    return Single.just("https://www.google.com");
                     return mFirebaseService.getVisioUrl(name, phone, email);
                 })
-                .flatMap(visionUrl -> {
-                    if(hasSms()) {
-                        return askSmsPermissions()
-                            .flatMap(smsGranted -> {
-                                if(smsGranted) return Single.just(visionUrl);
-                                else {
-                                    String smsPermissionsMissingMessage = mResources.getString(R.string.accept_sms_permissions);
-                                    return Single.error(new Throwable(smsPermissionsMissingMessage));
-                                }
-                            });
-                    } else return Single.just(visionUrl);
-                })
                 .subscribe(visionUrl -> {
                     if(devserver)
                         visionUrl = "https://instantvisio-dev.web.app/visio"+visionUrl.substring(29);
@@ -142,11 +130,8 @@ public class MainActivity extends AppCompatActivity {
                     Log.d(TAG, "message to send : " + message);
                     Log.d("VISION_URL", visionUrl);
 
-                    if(hasSms()) inviteUserAndOpenVisio(phone, message, visionUrl);
-                    else {
-                        showToastMessage(R.string.toast_launching);
-                        openVisionOnWebview(visionUrl);
-                    }
+                    showToastMessage(R.string.toast_launching);
+                    openVisionOnWebview(visionUrl);
                 }, error -> {
                     Log.d("MainActivity", "Permissions denied: " + error);
                     showToastMessage(error.getMessage());
@@ -154,13 +139,6 @@ public class MainActivity extends AppCompatActivity {
                     button.setEnabled(true);
                 });
         }
-    }
-
-    public Single<Boolean> askSmsPermissions() {
-        return Single.fromObservable(rxPermissions
-            .request(
-                Manifest.permission.SEND_SMS
-            ));
     }
 
     public Single<Boolean> askPermissions() {
