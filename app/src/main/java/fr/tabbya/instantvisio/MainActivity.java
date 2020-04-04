@@ -95,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(MainActivity.this, R.string.toast_missing_data, Toast.LENGTH_SHORT).show();
             button.setEnabled(true);
         } else if (!hasName()) {
+            button.setEnabled(true);
             showToastMessage(R.string.error_invalid_name);
         } else {
             String phone = getFieldValue(phoneField);
@@ -108,11 +109,11 @@ public class MainActivity extends AppCompatActivity {
                 .flatMap(granted -> {
                     Log.d("MainActivity: ", "Permissions request: " + (granted ? "granted" : "denied"));
                     String permissionsMissingErrorMessage = mResources.getString(R.string.accept_permissions);
-                    return granted ? Single.just(true) : Single.error(new Throwable("Permission missing"));
+                    return granted ? Single.just(true) : Single.error(new Throwable(permissionsMissingErrorMessage));
                 })
                 .flatMap(granted -> {
                     if(granted) {
-                        if(!isSmsFieldValid()) return Single.error(new Throwable(mResources.getString(R.string.error_phone_number_min_length)));
+                        if(hasSms() && !isSmsFieldValid()) return Single.error(new Throwable(mResources.getString(R.string.error_phone_number_min_length)));
                         else if(hasEmail() && !isEmailValid(email)) return Single.error(new Throwable(mResources.getString(R.string.error_invalid_email)));
                         return Single.just(granted);
                     } else return Single.error(new Throwable(mResources.getString(R.string.accept_permissions)));
