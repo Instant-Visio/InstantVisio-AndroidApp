@@ -12,11 +12,6 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="true" />
 
-<!--    <uses-permission android:name="android.permission.SEND_SMS"/>-->
-<!--    <uses-feature android:name="android.hardware.audio.low_latency" />-->
-<!--    <uses-feature android:name="android.hardware.audio.pro" />-->
-<!--    <uses-feature android:name="android.hardware.microphone"/>-->
-
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

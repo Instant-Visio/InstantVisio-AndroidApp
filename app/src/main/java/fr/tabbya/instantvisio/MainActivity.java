@@ -36,7 +36,6 @@ import io.reactivex.schedulers.Schedulers;
  */
 public class MainActivity extends AppCompatActivity {
     private static String TAG = "MainActivity";
-    private static final String SMS_SENT = "SMS_SENT";
     public static final String VISIO_URL_EXTRA = "visioUrl";
     public static final String VISIO_INVITE_PHONE_NUMBER = "VISIO_INVITE_PHONE_NUMBER";
     public static final String VISIO_INVITE_SMS_BODY = "VISIO_INVITE_SMS_BODY";
@@ -188,9 +187,6 @@ public class MainActivity extends AppCompatActivity {
         startActivity(videoCallActivityIntent);
     }
 
-    public void inviteUserAndOpenVisio(String phoneNumber, String message, String visioUrl) {
-        waitForSmsInviteToBeSent(phoneNumber, message, visioUrl);
-    }
 
     public boolean hasSms() {
         return !String.valueOf(phoneField.getText()).equals("");
@@ -202,31 +198,6 @@ public class MainActivity extends AppCompatActivity {
         return !String.valueOf(emailField.getText()).equals("");
     }
 
-    public void waitForSmsInviteToBeSent(String phoneNumber, String message, String visioUrl) {
-        SmsManager smsManager = SmsManager.getDefault();
-        PendingIntent sentPI = PendingIntent.getBroadcast(getApplicationContext(), 0, new Intent(SMS_SENT), PendingIntent.FLAG_UPDATE_CURRENT);
-        final String smsNotSentErrorMessage = mResources.getString(R.string.error_sending_sms);
-        registerReceiver(new BroadcastReceiver(){
-            @Override
-            public void onReceive(Context arg0, Intent arg1) {
-                switch (getResultCode()) {
-                    case Activity.RESULT_OK:
-                        showToastMessage(R.string.toast_invite_and_launch_visio);
-                        openVisionOnWebview(visioUrl);
-                        break;
-                    case SmsManager.RESULT_ERROR_NO_SERVICE:
-                        Log.d("[SMS-SEND]", "No service");
-                        showToastMessage(smsNotSentErrorMessage);
-                        break;
-                    default:
-                        Log.d("[SMS-SEND]", "Generic sms error");
-                        showToastMessage(smsNotSentErrorMessage);
-                        break;
-                }
-            }
-        }, new IntentFilter(SMS_SENT));
-        smsManager.sendTextMessage(phoneNumber, null, message, sentPI, null);
-    }
 
     public void showToastMessage(String message) {
         Toast.makeText(getBaseContext(), message, Toast.LENGTH_SHORT).show();
