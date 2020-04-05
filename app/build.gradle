@@ -6,7 +6,7 @@ android {
     buildToolsVersion "29.0.1"
 
     defaultConfig {
-        applicationId "fr.tabbya.instantvisioapp"
+        applicationId "fr.tabbya.instantvisio"
         minSdkVersion 22
         targetSdkVersion 29
         versionCode 10
